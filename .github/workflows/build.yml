@@ -20,7 +20,7 @@ jobs:
           echo "applications1=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Download/Download.list" >> $GITHUB_ENV
           echo "applications2=https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/applications.txt" >> $GITHUB_ENV
           echo "private1=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Lan/Lan.list" >> $GITHUB_ENV
-          echo "private2=https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/all.txt" >> $GITHUB_ENV
+          echo "private2=https://raw.githubusercontent.com/v2fly/domain-list-community/master/data/private" >> $GITHUB_ENV
           echo "games_cn1=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/SteamCN/SteamCN.list" >> $GITHUB_ENV
           echo "games_cn2=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Game/GameDownloadCN/GameDownloadCN.list" >> $GITHUB_ENV
           echo "netflix=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Netflix/Netflix.list" >> $GITHUB_ENV
@@ -93,7 +93,13 @@ jobs:
           DOMAIN,metacubexd.pages.dev
           EOF
           curl -sSL ${private1} | grep -Ev '#|IP-' >> ./tmp/temp-private.txt
-          curl -sSL ${private2} | grep -i '\.[A-Z]' | awk -F'[/:]' '{print $4}' | sed 's/^/DOMAIN,/' >> ./tmp/temp-private.txt
+          curl -sSL ${{private2 }} | \
+          grep -v '#' | \                # 过滤掉注释行
+          sed '/^\s*$/d' | \              # 过滤掉空行
+          sed 's/^full:/DOMAIN:/' | \     # 将行首的 'full:' 替换为 'DOMAIN:'
+          sed 's/^/DOMAIN-SUFFIX,/' | \   # 在行首加上 'DOMAIN-SUFFIX,'
+          sed 's/^[ \t]*//' | \           # 去除行首的空格或制表符
+          > ./tmp/temp-private.txt        # 将结果保存到临时文件中
           sort --ignore-case -u ./tmp/temp-private.txt > ./domains/private.list
 
       - name: Generate microsoft-cn
