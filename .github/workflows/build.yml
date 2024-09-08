@@ -93,7 +93,7 @@ jobs:
           DOMAIN,metacubexd.pages.dev
           EOF
           curl -sSL ${private1} | grep -Ev '#|IP-' >> ./tmp/temp-private.txt
-          curl -sSL ${private2} | grep -v '#' | sed '/^\s*$/d' | sed 's/^full:/DOMAIN:/' | sed '/^DOMAIN:/!s/^/DOMAIN-SUFFIX,/' | sed 's/^[ \t]*//' >> ./tmp/temp-private.txt
+          curl -sSL ${private2} | grep -v '#' | sed '/^\s*$/d' | sed 's/^full:/DOMAIN,/' | sed '/^DOMAIN,/!s/^/DOMAIN-SUFFIX,/' | sed 's/^[ \t]*//' >> ./tmp/temp-private.txt
           sort --ignore-case -u ./tmp/temp-private.txt > ./domains/private.list
 
       - name: Generate microsoft-cn
