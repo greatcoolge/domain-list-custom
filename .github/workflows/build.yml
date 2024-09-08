@@ -99,7 +99,7 @@ jobs:
           sed 's/^full:/DOMAIN:/' | \     # 将行首的 'full:' 替换为 'DOMAIN:'
           sed 's/^/DOMAIN-SUFFIX,/' | \   # 在行首加上 'DOMAIN-SUFFIX,'
           sed 's/^[ \t]*//' | \           # 去除行首的空格或制表符
-          > ./tmp/temp-private.txt        # 将结果保存到临时文件中
+          >> ./tmp/temp-private.txt        # 将结果保存到临时文件中
           sort --ignore-case -u ./tmp/temp-private.txt > ./domains/private.list
 
       - name: Generate microsoft-cn
