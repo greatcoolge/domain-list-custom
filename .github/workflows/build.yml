@@ -72,10 +72,10 @@ jobs:
       - name: Generate fakeip-filter
         run: |
           mkdir -p ./tmp/ ./domains/
-          curl -sSL ${fakeip_filter} | grep -Ev '#|\+|\*|Mijia' | sed 's/^/DOMAIN,/' > ./tmp/temp-fakeip-filter.txt
-          curl -sSL ${fakeip_filter} | grep -v '.\*' | grep -E '\*|\+' | sed 's/^[*+]\./DOMAIN-SUFFIX,/' >> ./tmp/temp-fakeip-filter.txt
-          curl -sSL ${fakeip_filter} | grep '.\*' | grep -E '\*|\+' | sed -e 's/^*/.\*/' -e 's/^+/.\+/' -e 's/^/DOMAIN-REGEX,/' >> ./tmp/temp-fakeip-filter.txt
-          sort --ignore-case ./tmp/temp-fakeip-filter.txt > ./domains/fakeip-filter.list
+          curl -sSL ${fakeip_filter} | grep -v '.\*' | grep -E '\*|\+' | sed 's/^[*+]\.//' | sort --ignore-case > ./tmp/temp-fakeip-filter-suffix.txt
+
+          curl -sSL ${fakeip_filter} | grep -Ev '#|\+|\*|Mijia' | sed 's/^/DOMAIN,/' > ./tmp/temp-fakeip-filter-other.txt
+          curl -sSL ${fakeip_filter} | grep '.\*' | grep -E '\*|\+' | sed -e 's/^*/.\*/' -e 's/^+/.\+/' -e 's/^/DOMAIN-REGEX,/' | sort --ignore-case >> ./tmp/temp-fakeip-filter-other.txt
 
       - name: Generate fakeip-filter-lite
         run: |
@@ -95,11 +95,14 @@ jobs:
         run: |
           curl -sSL ${applications1} | grep -Ev '#|IP-' > ./tmp/temp-applications.txt
           curl -sSL ${applications2} | grep -v 'payload:' | sed -e 's/^[ \t]*- //' >> ./tmp/temp-applications.txt
-          sort --ignore-case -u ./tmp/temp-applications.txt > ./domains/applications.list
+          sort --ignore-case ./tmp/temp-applications.txt > ./domains/applications.list
 
       - name: Generate private
         run: |
-          cat <<EOF > ./tmp/temp-private.txt
+          grep '^domain:' ./publish/private.txt | sed 's/^domain://' > ./tmp/temp-private-suffix.txt
+          curl -sSL ${private1} | grep 'DOMAIN-SUFFIX,' | sed 's/DOMAIN-SUFFIX,//' | sort --ignore-case -u >> ./tmp/temp-private-suffix.txt
+
+          cat <<EOF > ./tmp/temp-private-other.txt
           DOMAIN,yacd.haishan.me
           DOMAIN,yacd.metacubex.one
           DOMAIN,d.metacubex.one
@@ -107,10 +110,9 @@ jobs:
           DOMAIN,metacubexd.pages.dev
           DOMAIN,board.zash.run.place
           EOF
-          sed -e 's/^full:/DOMAIN,/' -e 's/^domain:/DOMAIN-SUFFIX,/' -e 's/^keyword:/DOMAIN-KEYWORD,/' -e 's/^regexp:/DOMAIN-REGEX,/' ./publish/private.txt >> ./tmp/temp-private.txt
-          curl -sSL ${private1} | grep -Ev '#|IP-' >> ./tmp/temp-private.txt
-          curl -sSL ${private2} | grep -i '\.[A-Z]' | awk -F'[/:]' '{print $4}' | sed 's/^/DOMAIN,/' >> ./tmp/temp-private.txt
-          sort --ignore-case -u ./tmp/temp-private.txt > ./domains/private.list
+          grep -v '^domain:' ./publish/private.txt | sed -e 's/^full:/DOMAIN,/' -e 's/^keyword:/DOMAIN-KEYWORD,/' -e 's/^regexp:/DOMAIN-REGEX,/' >> ./tmp/temp-private-other.txt
+          curl -sSL ${private1} | grep -Ev '#|IP-|DOMAIN-SUFFIX,' >> ./tmp/temp-private-other.txt
+          curl -sSL ${private2} | grep -i '\.[A-Z]' | awk -F'[/:]' '{print $4}' | sed 's/^/DOMAIN,/' | sort --ignore-case -u >> ./tmp/temp-private-other.txt
 
       - name: Generate ads
         run: |
@@ -130,10 +132,13 @@ jobs:
 
       - name: Generate games-cn
         run: |
-          grep '@cn$' ./publish/category-games.txt | sed -e 's/^full:/DOMAIN,/' -e 's/^domain:/DOMAIN-SUFFIX,/' -e 's/^keyword:/DOMAIN-KEYWORD,/' -e 's/^regexp:/DOMAIN-REGEX,/' -e 's/:@cn$//' > ./tmp/temp-games-cn.txt
-          curl -sSL ${games_cn1} | grep -Ev '#|IP-' >> ./tmp/temp-games-cn.txt
-          curl -sSL ${games_cn2} | grep -Ev '#|IP-' >> ./tmp/temp-games-cn.txt
-          sort --ignore-case -u ./tmp/temp-games-cn.txt > ./domains/games-cn.list
+          grep '@cn$' ./publish/category-games.txt | grep '^domain:' | sed -e 's/^domain://' -e 's/:@cn$//' > ./tmp/temp-games-cn-suffix.txt
+          curl -sSL ${games_cn1} | grep 'DOMAIN-SUFFIX,' | sed 's/DOMAIN-SUFFIX,//' >> ./tmp/temp-games-cn-suffix.txt
+          curl -sSL ${games_cn2} | grep 'DOMAIN-SUFFIX,' | sed 's/DOMAIN-SUFFIX,//' | sort --ignore-case -u >> ./tmp/temp-games-cn-suffix.txt
+
+          grep '@cn$' ./publish/category-games.txt | grep -v '^domain:' | sed -e 's/^full:/DOMAIN,/' -e 's/^keyword:/DOMAIN-KEYWORD,/' -e 's/^regexp:/DOMAIN-REGEX,/' -e 's/:@cn$//' > ./tmp/temp-games-cn-other.txt
+          curl -sSL ${games_cn1} | grep -Ev '#|IP-|DOMAIN-SUFFIX,' >> ./tmp/temp-games-cn-other.txt
+          curl -sSL ${games_cn2} | grep -Ev '#|IP-|DOMAIN-SUFFIX,' | sort --ignore-case -u >> ./tmp/temp-games-cn-other.txt
 
       - name: Generate netflix
         run: |
@@ -177,15 +182,17 @@ jobs:
 
       - name: Generate networktest
         run: |
-          cat <<EOF > ./tmp/temp-networktest.txt
+          grep '^domain:' ./publish/speedtest.txt | sed -e 's/^domain://' > ./tmp/temp-networktest-suffix.txt
+          curl -sSL ${networktest} | grep 'DOMAIN-SUFFIX,' | sed 's/DOMAIN-SUFFIX,//' | sort --ignore-case -u >> ./tmp/temp-networktest-suffix.txt
+
+          cat <<EOF > ./tmp/temp-networktest-other.txt
           DOMAIN-KEYWORD,ipv6-test
           DOMAIN-KEYWORD,ipv6test
           DOMAIN-KEYWORD,test-ipv6
           DOMAIN-KEYWORD,testipv6
           EOF
-          sed -e 's/^full:/DOMAIN,/' -e 's/^domain:/DOMAIN-SUFFIX,/' -e 's/^keyword:/DOMAIN-KEYWORD,/' -e 's/^regexp:/DOMAIN-REGEX,/' ./publish/speedtest.txt >> ./tmp/temp-networktest.txt
-          curl -sSL ${networktest} | grep -Ev '#|IP-' >> ./tmp/temp-networktest.txt
-          sort --ignore-case -u ./tmp/temp-networktest.txt > ./domains/networktest.list
+          grep -v '^domain:' ./publish/speedtest.txt | sed -e 's/^full:/DOMAIN,/' -e 's/^keyword:/DOMAIN-KEYWORD,/' -e 's/^regexp:/DOMAIN-REGEX,/' >> ./tmp/temp-networktest-other.txt
+          curl -sSL ${networktest} | grep -Ev '#|IP-|DOMAIN-SUFFIX,' | sort --ignore-case -u >> ./tmp/temp-networktest-other.txt
 
       - name: Generate tld-proxy
         run: |
@@ -194,11 +201,12 @@ jobs:
       - name: Generate proxy
         run: |
           chmod +x ./gfwlist2dnsmasq/gfwlist2dnsmasq.sh
-          ./gfwlist2dnsmasq/gfwlist2dnsmasq.sh -l -o ./tmp/temp-proxy.txt
-          sed -i 's/^/DOMAIN-SUFFIX,/' ./tmp/temp-proxy.txt
-          sed -e 's/^full:/DOMAIN,/' -e 's/^domain:/DOMAIN-SUFFIX,/' -e 's/^keyword:/DOMAIN-KEYWORD,/' -e 's/^regexp:/DOMAIN-REGEX,/' -e 's/:@\!cn$//' ./publish/geolocation-\!cn.txt >> ./tmp/temp-proxy.txt
-          curl -sSL ${proxy} | grep -Ev '#|IP-' >> ./tmp/temp-proxy.txt
-          sort --ignore-case -u ./tmp/temp-proxy.txt > ./domains/proxy.list
+          ./gfwlist2dnsmasq/gfwlist2dnsmasq.sh -l -o ./tmp/temp-proxy-suffix.txt
+          grep '^domain:' ./publish/geolocation-\!cn.txt | sed -e 's/^domain://' -e 's/:@\!cn$//' >> ./tmp/temp-proxy-suffix.txt
+          curl -sSL ${proxy} | grep 'DOMAIN-SUFFIX,' | sed 's/DOMAIN-SUFFIX,//' | sort --ignore-case -u >> ./tmp/temp-proxy-suffix.txt
+
+          grep -v '^domain:' ./publish/geolocation-\!cn.txt | sed -e 's/^full:/DOMAIN,/' -e 's/^keyword:/DOMAIN-KEYWORD,/' -e 's/^regexp:/DOMAIN-REGEX,/' -e 's/:@\!cn$//' > ./tmp/temp-proxy-other.txt
+          curl -sSL ${proxy} | grep -Ev '#|IP-|DOMAIN-SUFFIX,' | sort --ignore-case -u >> ./tmp/temp-proxy-other.txt
 
       - name: Generate tld-cn
         run: |
@@ -206,9 +214,26 @@ jobs:
 
       - name: Generate cn
         run: |
-          sed -e 's/^full:/DOMAIN,/' -e 's/^domain:/DOMAIN-SUFFIX,/' -e 's/^keyword:/DOMAIN-KEYWORD,/' -e 's/^regexp:/DOMAIN-REGEX,/' -e 's/:@cn$//' ./publish/cn.txt > ./tmp/temp-cn.txt
-          curl -sSL ${cn} | grep -Ev '#|IP-' >> ./tmp/temp-cn.txt
-          sort --ignore-case -u ./tmp/temp-cn.txt > ./domains/cn.list
+          grep '^domain:' ./publish/cn.txt | sed -e 's/^domain://' -e 's/:@cn$//' > ./tmp/temp-cn-suffix.txt
+          curl -sSL ${cn} | grep 'DOMAIN-SUFFIX,' | sed 's/DOMAIN-SUFFIX,//' | sort --ignore-case -u >> ./tmp/temp-cn-suffix.txt
+
+          grep -v '^domain:' ./publish/cn.txt | sed -e 's/^full:/DOMAIN,/' -e 's/^keyword:/DOMAIN-KEYWORD,/' -e 's/^regexp:/DOMAIN-REGEX,/' -e 's/:@cn$//' > ./tmp/temp-cn-other.txt
+          curl -sSL ${cn} | grep -Ev '#|IP-|DOMAIN-SUFFIX,' | sort --ignore-case -u >> ./tmp/temp-cn-other.txt
+
+      - name: Domain name deduplication
+        run: |
+          chmod +x ./tools/deduplication.py ./tools/filter.sh
+          rules=(fakeip-filter private games-cn networktest proxy cn)
+          for rule in "${rules[@]}"; do
+            ./tools/deduplication.py "./tmp/temp-${rule}-suffix.txt" "./tmp/${rule}-deleted-unsort-suffix.txt"
+            [ ! -f "./tmp/${rule}-deleted-unsort-suffix.txt" ] && touch "./tmp/${rule}-deleted-unsort-suffix.txt"
+            sort --ignore-case "./tmp/${rule}-deleted-unsort-suffix.txt" > "./tmp/${rule}-deleted-sort-suffix.txt"
+            diff "./tmp/${rule}-deleted-sort-suffix.txt" "./tmp/temp-${rule}-suffix.txt" | awk '/^>/{print $2}' | sed 's/^/DOMAIN-SUFFIX,/' > "./tmp/${rule}-without-redundant-suffix.txt"
+
+            cat "./tmp/temp-${rule}-other.txt" "./tmp/${rule}-without-redundant-suffix.txt" | sort --ignore-case -u > "./tmp/${rule}-redundant.txt"
+
+            ./tools/filter.sh "./tmp/${rule}-redundant.txt" > "./domains/${rule}.list"
+          done
           rm -rf ./tmp* ./publish*
 
       - name: Release and upload `domains` assets
