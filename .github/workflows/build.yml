@@ -222,11 +222,7 @@ jobs:
 
       - name: Generate media
         run: |
-          grep '^domain:' ./publish/category-entertainment.txt | sed 's/^domain://' | sed -E 's/:@(cn|!cn)$//' > ./tmp/temp-media-suffix.txt
-          curl -sSL ${media} | grep 'DOMAIN-SUFFIX,' | sed 's/DOMAIN-SUFFIX,//' | sort --ignore-case -u >> ./tmp/temp-media-suffix.txt
-
-          grep -v '^domain:' ./publish/category-entertainment.txt | sed -e 's/^full:/DOMAIN,/' -e 's/^keyword:/DOMAIN-KEYWORD,/' -e 's/^regexp:/DOMAIN-REGEX,/' | sed -E 's/:@(cn|!cn)$//' > ./tmp/temp-media-other.txt
-          curl -sSL ${media} | grep -Ev '#|IP-|DOMAIN-SUFFIX,' | sort --ignore-case -u >> ./tmp/temp-media-other.txt
+          curl -sSL ${media} | grep -Ev '#|IP-' > ./domains/media.list
 
       - name: Generate ai
         run: |
@@ -279,7 +275,7 @@ jobs:
       - name: Domain name deduplication
         run: |
           chmod +x ./tools/deduplication.py ./tools/filter.sh
-          rules=(fakeip-filter private games-cn netflix disney max primevideo appletv youtube tiktok bilibili spotify media networktest proxy cn)
+          rules=(fakeip-filter private games-cn netflix disney max primevideo appletv youtube tiktok bilibili spotify networktest proxy cn)
           for rule in "${rules[@]}"; do
             ./tools/deduplication.py "./tmp/temp-${rule}-suffix.txt" "./tmp/${rule}-deleted-unsort-suffix.txt"
             [ ! -f "./tmp/${rule}-deleted-unsort-suffix.txt" ] && touch "./tmp/${rule}-deleted-unsort-suffix.txt"
